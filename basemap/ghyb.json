@@ -1,0 +1,19 @@
+{
+    "version": 8,
+    "sources": {
+        "google-hybrid": {
+            "type": "raster",
+            "tiles": [
+                "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+            ],
+            "tileSize": 256
+        }
+    },
+    "layers": [
+        {
+            "id": "google-layer",
+            "type": "raster",
+            "source": "google-hybrid"
+        }
+    ]
+}
