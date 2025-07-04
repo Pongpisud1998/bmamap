@@ -27,3 +27,4 @@ cd ..
 npx expo run:ios
 
 npm install --save-dev typescript @types/react @types/react-native
+npm i --save-dev @types/papaparse

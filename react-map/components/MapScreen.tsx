@@ -4,49 +4,39 @@ import {
   Text,
   TouchableOpacity,
   FlatList,
-  StyleSheet,
   ScrollView,
+  StyleSheet
 } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
 import { parse } from 'papaparse';
+
+MapboxGL.setAccessToken('');
 
 const BASE_URL = 'https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/geodata/';
 const AIR4THAI_URL = 'http://air4thai.com/forweb/getAQI_JSON.php';
 
 const baseMapStyles = [
-  {
-    name: "Google Hybrid",
-    style: "https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/basemap/ghyb.json"
-  },
-  {
-    name: "OpenStreetMap",
-    style: "https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/basemap/osm.json"
-  },
-  {
-    name: "ESRI WorldImagery",
-    style: "https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/basemap/esri.json"
-  },
-  {
-    name: "Carto Light",
-    style: "https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/basemap/cartoLight.json"
-  },
-  {
-    name: "Carto Dark",
-    style: "https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/basemap/cartoDark.json"
-  },
+  { name: "Google Hybrid", style: "https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/basemap/ghyb.json" },
+  { name: "OpenStreetMap", style: "https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/basemap/osm.json" },
+  { name: "ESRI WorldImagery", style: "https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/basemap/esri.json" },
+  { name: "Carto Light", style: "https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/basemap/cartoLight.json" },
+  { name: "Carto Dark", style: "https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/basemap/cartoDark.json" },
 ];
 
 const AQI_TYPES = ['AQI', 'PM25', 'PM10', 'O3', 'CO', 'NO2', 'SO2'];
 
 const initialLayers = [
-  { id: 1, type: 'geojson', name_en: 'district', name: 'เขต', path: 'district.geojson', visible: true, icon: null, minzoom: 10, maxzoom: 15 },
-  { id: 2, type: 'geojson', name_en: 'road', name: 'ถนน', path: 'bma_road.geojson', visible: true, icon: null, minzoom: 15, maxzoom: 22 },
-  { id: 5, type: 'geojson', name_en: 'bma_school', name: 'โรงเรียน', path: 'bma_school.geojson', visible: true, icon: 'school', minzoom: 10, maxzoom: 22 },
-  { id: 6, type: 'geojson', name_en: 'air_pollution', name: 'สถานีตรวจวัด', path: 'air_pollution.geojson', visible: true, icon: 'station', minzoom: 10, maxzoom: 22 },
-  { id: 7, type: 'csv', name_en: 'bma_cctv', name: 'กล้อง CCTV', path: 'bma_cctv.csv', visible: true, icon: 'cctv', minzoom: 10, maxzoom: 22 },
-  { id: 9, type: 'shp', name_en: 'bma_building', name: 'อาคาร', path: 'bma_building.zip', visible: true, icon: null, minzoom: 15, maxzoom: 22 },
-  { id: 10, type: 'api', name_en: 'air4thai', name: 'Air4Thai', path: AIR4THAI_URL, visible: true, icon: 'air', minzoom: 15, maxzoom: 22 },
-  { id: 11, type: 'arcgis', name_en: 'bma_basemap_arcgis', name: 'BMAGI Basemap 2564', path: '', visible: false, icon: null, minzoom: 0, maxzoom: 22 }
+  { id: 1, type: 'geojson', name: 'เขต', name_en: 'district', path: 'district.geojson', visible: true },
+  { id: 2, type: 'geojson', name: 'ถนน', name_en: 'road', path: 'bma_road.geojson', visible: true },
+  { id: 3, type: 'geojson', name: 'ทางจักรยาน', name_en: 'bike_way', path: 'bike_way.geojson', visible: true },
+  { id: 4, type: 'geojson', name: 'Zone', name_en: 'bma_zone', path: 'bma_zone.geojson', visible: true },
+  { id: 5, type: 'geojson', name: 'โรงเรียน', name_en: 'bma_school', path: 'bma_school.geojson', visible: true, icon: 'school.png' },
+  { id: 6, type: 'geojson', name: 'สถานีตรวจวัด', name_en: 'air_pollution', path: 'air_pollution.geojson', visible: true, icon: 'station.png' },
+  { id: 7, type: 'csv', name: 'กล้อง CCTV', name_en: 'bma_cctv', path: 'bma_cctv.csv', visible: true, icon: 'cctv.png' },
+  // { id: 8, type: 'geojson', name: 'พื้นที่สีเขียว', name_en: 'bma_green_area', path: 'bma_green_area.geojson', visible: true },
+  { id: 9, type: 'geojson', name: 'อาคาร', name_en: 'bma_building', path: 'bma_building.geojson', visible: true },
+  { id: 10, type: 'api', name: 'Air4Thai', name_en: 'air4thai', path: AIR4THAI_URL, visible: true, icon: 'air.png' },
+  { id: 11, type: 'arcgis', name: 'BMAGI Basemap 2564', name_en: 'bma_basemap_arcgis', visible: false },
 ];
 
 export default function MapScreen() {
@@ -57,35 +47,37 @@ export default function MapScreen() {
   useEffect(() => {
     const loadLayers = async () => {
       const enriched = await Promise.all(initialLayers.map(async (layer) => {
-        if (layer.type === 'geojson') {
-          const res = await fetch(BASE_URL + layer.path);
-          const geojson = await res.json();
-          return { ...layer, geojson };
-        } else if (layer.type === 'csv') {
-          const res = await fetch(BASE_URL + layer.path);
-          const text = await res.text();
-          const parsed = parse(text, { header: true });
-          const features = parsed.data.map((row: any, i: number) => ({
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [parseFloat(row.lng), parseFloat(row.lat)] },
-            properties: { ...row }
-          }));
-          return { ...layer, geojson: { type: 'FeatureCollection', features } };
-        } else if (layer.type === 'api') {
-          const res = await fetch(layer.path);
-          const json = await res.json();
-          const stations = json.stations || [];
-          const features = stations.map((s: any) => ({
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [s.Long, s.Lat] },
-            properties: { ...s }
-          }));
-          return { ...layer, geojson: { type: 'FeatureCollection', features } };
-        } else {
-          return layer;
+        try {
+          if (layer.type === 'geojson' && layer.path) {
+            const res = await fetch(BASE_URL + layer.path);
+            const geojson = await res.json();
+            return { ...layer, geojson };
+          } else if (layer.type === 'csv' && layer.path) {
+            const res = await fetch(BASE_URL + layer.path);
+            const text = await res.text();
+            const parsed = parse(text, { header: true });
+            const features = parsed.data.map((row: any) => ({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [parseFloat(row.lng), parseFloat(row.lat)] },
+              properties: { ...row }
+            }));
+            return { ...layer, geojson: { type: 'FeatureCollection', features } };
+          } else if (layer.type === 'api' && layer.path) {
+            const res = await fetch(layer.path);
+            const json = await res.json();
+            const stations = json.stations || [];
+            const features = stations.map((s: any) => ({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [s.Long, s.Lat] },
+              properties: { ...s }
+            }));
+            return { ...layer, geojson: { type: 'FeatureCollection', features } };
+          }
+        } catch (err) {
+          console.warn("Failed to load layer", layer.name, err);
         }
+        return layer;
       }));
-
       setLayers(enriched);
     };
 
@@ -99,12 +91,18 @@ export default function MapScreen() {
   return (
     <View style={{ flex: 1 }}>
       <MapboxGL.MapView style={{ flex: 1 }} styleURL={selectedStyle}>
-        <MapboxGL.Camera centerCoordinate={[100.5, 13.75]} zoomLevel={10} />
+        <MapboxGL.Images images={{
+          school: { uri: 'https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/images/school.png' },
+          station: { uri: 'https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/images/station.png' },
+          cctv: { uri: 'https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/images/cctv.png' },
+          air: { uri: 'https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/images/air.png' },
+        }} />
+        <MapboxGL.Camera zoomLevel={10} centerCoordinate={[100.5, 13.75]} />
 
         {layers.map(layer => {
           if (!layer.visible || !layer.geojson) return null;
+          const iconId = layer.icon?.replace('.png', '');
 
-          // Air4Thai filter
           if (layer.name_en === 'air4thai') {
             const filtered = {
               ...layer.geojson,
@@ -112,56 +110,61 @@ export default function MapScreen() {
             };
             return (
               <MapboxGL.ShapeSource key={layer.id} id={`source-${layer.id}`} shape={filtered}>
-                <MapboxGL.SymbolLayer id={`layer-${layer.id}`} style={{ iconImage: layer.icon, iconSize: 0.6 }} />
-              </MapboxGL.ShapeSource>
-            );
-          }
-
-          // 3D Buildings
-          if (layer.name_en === 'bma_building') {
-            return (
-              <MapboxGL.ShapeSource key={layer.id} id={`source-${layer.id}`} shape={layer.geojson}>
-                <MapboxGL.FillExtrusionLayer
+                <MapboxGL.SymbolLayer
                   id={`layer-${layer.id}`}
                   style={{
-                    fillExtrusionHeight: ['get', 'height'],
-                    fillExtrusionColor: '#aaa',
-                    fillExtrusionOpacity: 0.7,
+                    iconImage: iconId,
+                    iconSize: 0.5,
+                    textField: ['get', selectedAQI],
+                    textSize: 12,
+                    textOffset: [0, 1.2],
+                    textColor: '#000',
+                    textHaloColor: '#fff',
+                    textHaloWidth: 1
                   }}
-                  minZoomLevel={layer.minzoom}
-                  maxZoomLevel={layer.maxzoom}
                 />
               </MapboxGL.ShapeSource>
             );
           }
 
           return (
-            <MapboxGL.ShapeSource key={layer.id} id={`source-${layer.id}`} shape={layer.geojson}>
-              {layer.icon ? (
-                <MapboxGL.SymbolLayer id={`layer-${layer.id}`} style={{ iconImage: layer.icon, iconSize: 0.5 }} />
+            <MapboxGL.ShapeSource key={`source-${layer.id}`} id={`source-${layer.id}`} shape={layer.geojson}>
+              {iconId ? (
+                <MapboxGL.SymbolLayer
+                  id={`layer-${layer.id}`}
+                  style={{ iconImage: iconId, iconSize: 0.5 }}
+                />
               ) : (
-                <MapboxGL.LineLayer id={`layer-${layer.id}`} style={{ lineColor: 'blue', lineWidth: 1 }} />
+                <MapboxGL.LineLayer
+                  id={`layer-${layer.id}`}
+                  style={{ lineColor: 'blue', lineWidth: 1 }}
+                />
               )}
             </MapboxGL.ShapeSource>
           );
         })}
-
-        {/* ArcGIS tile service layer */}
-        {/* <MapboxGL.RasterSource
-          id="arcgis"
-          tileSize={256}
-          tileUrlTemplates={[
-            "https://cpudgiapp.bangkok.go.th/arcgis/rest/services/GI_Platform/BMAGI_Basemap_2564/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&size=256,256&format=png&transparent=true&f=image"
-          ]}
-        >
-          <MapboxGL.RasterLayer
-            id="arcgis-layer"
-            style={{ rasterOpacity: 0.8 }} // ✅ REQUIRED
-          />
-        </MapboxGL.RasterSource> */}
       </MapboxGL.MapView>
 
-      {/* AQI dropdown */}
+      <View style={styles.layerControl}>
+        <FlatList
+          data={layers}
+          keyExtractor={item => item.id.toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => toggleLayer(item.id)} style={styles.layerItem}>
+              <Text>{item.visible ? '✅' : '⬜'} {item.name}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+
+      <ScrollView horizontal style={styles.baseControl}>
+        {baseMapStyles.map(b => (
+          <TouchableOpacity key={b.name} onPress={() => setSelectedStyle(b.style)} style={styles.baseItem}>
+            <Text>{b.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
       <ScrollView horizontal style={styles.aqiControl}>
         {AQI_TYPES.map(type => (
           <TouchableOpacity key={type} onPress={() => setSelectedAQI(type)} style={styles.aqiItem}>
@@ -169,65 +172,25 @@ export default function MapScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
-
-      {/* Basemap switcher */}
-      <ScrollView horizontal style={styles.basemapControl}>
-        {baseMapStyles.map(style => (
-          <TouchableOpacity key={style.name} onPress={() => setSelectedStyle(style.style)} style={styles.baseItem}>
-            <Text>{style.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Layer toggle */}
-      <View style={styles.layerControl}>
-        <FlatList
-          data={layers}
-          keyExtractor={item => item.id.toString()}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => toggleLayer(item.id)}>
-              <Text>{item.visible ? '✅' : '⬜'} {item.name}</Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  basemapControl: {
-    position: 'absolute',
-    top: 50,
-    right: 10,
-    backgroundColor: 'white',
-    padding: 6,
-    borderRadius: 8,
-    zIndex: 10,
+  baseControl: {
+    position: 'absolute', top: 50, left: 10,
+    backgroundColor: 'white', padding: 6, borderRadius: 8, zIndex: 10,
   },
-  baseItem: {
-    marginHorizontal: 6,
-  },
+  baseItem: { marginHorizontal: 6 },
   aqiControl: {
-    position: 'absolute',
-    top: 100,
-    right: 10,
-    backgroundColor: 'white',
-    padding: 6,
-    borderRadius: 8,
-    zIndex: 10,
+    position: 'absolute', top: 100, left: 10,
+    backgroundColor: 'white', padding: 6, borderRadius: 8, zIndex: 10,
   },
-  aqiItem: {
-    marginHorizontal: 6,
-  },
+  aqiItem: { marginHorizontal: 6 },
   layerControl: {
-    position: 'absolute',
-    bottom: 20,
-    left: 10,
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 8,
-    maxHeight: 200,
-    zIndex: 10,
+    position: 'absolute', bottom: 20, left: 10,
+    backgroundColor: 'white', padding: 10, borderRadius: 8,
+    maxHeight: 250, zIndex: 10,
   },
+  layerItem: { paddingVertical: 4 }
 });
