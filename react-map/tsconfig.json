@@ -12,6 +12,7 @@
     "app/**/*.ts",
     "app/**/*.tsx",
     "expo-env.d.ts",
-    "components/MapView.tsx"
+    "components/MapView.tsx",
+    ".expo/types/**/*.ts"
   ]
 }

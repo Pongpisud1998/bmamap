@@ -25,3 +25,5 @@ cd ios
 pod install --repo-update
 cd ..
 npx expo run:ios
+
+npm install --save-dev typescript @types/react @types/react-native
