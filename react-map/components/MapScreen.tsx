@@ -42,7 +42,7 @@ const initialLayers = [
   { id: 6, type: 'geojson', name: 'สถานีตรวจวัด', name_en: 'air_pollution', path: 'air_pollution.geojson', visible: true, icon: 'station.png' },
   { id: 7, type: 'csv', name: 'กล้อง CCTV', name_en: 'bma_cctv', path: 'bma_cctv.csv', visible: true, icon: 'cctv.png' },
   { id: 9, type: 'geojson', name: 'อาคาร', name_en: 'bma_building', path: 'bma_building.geojson', visible: false },
-  { id: 10, type: 'api', name: 'Air4Thai', name_en: 'air4thai', path: AIR4THAI_URL, visible: true, icon: 'air.png' },
+  { id: 10, type: 'api', name: 'Air4Thai', name_en: 'air4thai', path: 'air4thai.json', visible: true, icon: 'air.png' },
   { id: 11, type: 'arcgis', name: 'BMAGI Basemap 2564', name_en: 'bma_basemap_arcgis', visible: false },
 ];
 
@@ -70,7 +70,7 @@ export default function MapScreen() {
             }));
             return { ...layer, geojson: { type: 'FeatureCollection', features } };
           } else if (layer.type === 'api' && layer.path) {
-            const res = await fetch(layer.path);
+            const res = await fetch(BASE_URL + layer.path);
             const json = await res.json();
             const stations = json.stations || [];
             const features = stations.map((s: any) => ({
@@ -114,43 +114,55 @@ export default function MapScreen() {
   const renderAir4ThaiMarkers = (layer: any) => {
     if (!layer?.geojson?.features) return null;
 
-    return layer.geojson.features.map((f: any, index: number) => {
-      const coords = f.geometry.coordinates;
-      let AQILast: any;
-      try {
-        AQILast = typeof f.properties.AQILast === 'string' ? JSON.parse(f.properties.AQILast) : f.properties.AQILast;
-      } catch {
-        return null;
-      }
+    return layer.geojson.features
+      .map((f: any, index: number) => {
+        const coords = f.geometry.coordinates;
+        let AQILast: any;
+        try {
+          AQILast = typeof f.properties.AQILast === 'string'
+            ? JSON.parse(f.properties.AQILast)
+            : f.properties.AQILast;
+        } catch {
+          return null;
+        }
 
-      const pollutant = AQILast?.[selectedAQI];
-      if (!pollutant || pollutant.aqi === '-1' || pollutant.aqi === '-999') return null;
+        const pollutant = AQILast?.[selectedAQI];
+        if (!pollutant || pollutant.aqi === '-1' || pollutant.aqi === '-999') return null;
 
-      const color = colorMap[pollutant.color_id] || '#cccccc';
-      const valueText = selectedAQI === 'AQI' ? pollutant.aqi : pollutant.value;
+        const color = colorMap[pollutant.color_id] || '#cccccc';
+        const valueText = selectedAQI === 'AQI' ? pollutant.aqi : pollutant.value;
 
-      return (
-        <MapboxGL.PointAnnotation
-          key={`air4thai-${index}`}
-          id={`air4thai-${index}`}
-          coordinate={coords}
-        >
-          <View style={{
-            width: 30,
-            height: 30,
-            backgroundColor: color,
-            borderRadius: 15,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 2,
-            borderColor: '#fff',
-          }}>
-            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>{valueText}</Text>
-          </View>
-        </MapboxGL.PointAnnotation>
-      );
-    });
+        return (
+          <MapboxGL.PointAnnotation
+            key={`air4thai-${index}`}
+            id={`air4thai-${index}`}
+            coordinate={coords}
+          >
+            <View style={{
+              width: 30,
+              height: 30,
+              backgroundColor: color,
+              borderRadius: 15,
+              borderWidth: 2,
+              borderColor: '#fff',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Text style={{
+                color: '#fff',
+                fontWeight: 'bold',
+                fontSize: 11,
+                textAlign: 'center',
+              }}>
+                {valueText}
+              </Text>
+            </View>
+          </MapboxGL.PointAnnotation>
+        );
+      })
+      .filter(Boolean); // remove any nulls
   };
+
 
   return (
     <View style={{ flex: 1 }}>
@@ -158,9 +170,8 @@ export default function MapScreen() {
         <MapboxGL.Camera zoomLevel={10} centerCoordinate={[100.5, 13.75]} />
 
         {layers.map(layer => {
-          if (!layer.visible || !layer.geojson) return null;
+          if (!layer.visible || !layer.geojson || !layer.geojson.features) return null;
           if (layer.name_en === 'air4thai') return renderAir4ThaiMarkers(layer);
-
           const iconId = layer.icon?.replace('.png', '');
           return (
             <MapboxGL.ShapeSource key={`source-${layer.id}`} id={`source-${layer.id}`} shape={layer.geojson}>
