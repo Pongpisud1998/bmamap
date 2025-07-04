@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   FlatList,
   ScrollView,
-  StyleSheet
+  StyleSheet,
 } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
 import { parse } from 'papaparse';
@@ -25,16 +25,23 @@ const baseMapStyles = [
 
 const AQI_TYPES = ['AQI', 'PM25', 'PM10', 'O3', 'CO', 'NO2', 'SO2'];
 
+const colorMap: any = {
+  "0": "#808080", // gray
+  "1": "#00bfff", // sky blue
+  "2": "#32cd32", // lime green
+  "3": "#ffa500", // orange
+  "4": "#ff4500", // red-orange
+  "5": "#800080", // purple
+};
+
 const initialLayers = [
   { id: 1, type: 'geojson', name: 'เขต', name_en: 'district', path: 'district.geojson', visible: true },
-  { id: 2, type: 'geojson', name: 'ถนน', name_en: 'road', path: 'bma_road.geojson', visible: true },
+  { id: 2, type: 'geojson', name: 'ถนน', name_en: 'road', path: 'bma_road.geojson', visible: false },
   { id: 3, type: 'geojson', name: 'ทางจักรยาน', name_en: 'bike_way', path: 'bike_way.geojson', visible: true },
-  { id: 4, type: 'geojson', name: 'Zone', name_en: 'bma_zone', path: 'bma_zone.geojson', visible: true },
   { id: 5, type: 'geojson', name: 'โรงเรียน', name_en: 'bma_school', path: 'bma_school.geojson', visible: true, icon: 'school.png' },
   { id: 6, type: 'geojson', name: 'สถานีตรวจวัด', name_en: 'air_pollution', path: 'air_pollution.geojson', visible: true, icon: 'station.png' },
   { id: 7, type: 'csv', name: 'กล้อง CCTV', name_en: 'bma_cctv', path: 'bma_cctv.csv', visible: true, icon: 'cctv.png' },
-  // { id: 8, type: 'geojson', name: 'พื้นที่สีเขียว', name_en: 'bma_green_area', path: 'bma_green_area.geojson', visible: true },
-  { id: 9, type: 'geojson', name: 'อาคาร', name_en: 'bma_building', path: 'bma_building.geojson', visible: true },
+  { id: 9, type: 'geojson', name: 'อาคาร', name_en: 'bma_building', path: 'bma_building.geojson', visible: false },
   { id: 10, type: 'api', name: 'Air4Thai', name_en: 'air4thai', path: AIR4THAI_URL, visible: true, icon: 'air.png' },
   { id: 11, type: 'arcgis', name: 'BMAGI Basemap 2564', name_en: 'bma_basemap_arcgis', visible: false },
 ];
@@ -68,7 +75,10 @@ export default function MapScreen() {
             const stations = json.stations || [];
             const features = stations.map((s: any) => ({
               type: 'Feature',
-              geometry: { type: 'Point', coordinates: [s.Long, s.Lat] },
+              geometry: {
+                type: 'Point',
+                coordinates: [parseFloat(s.long), parseFloat(s.lat)],
+              },
               properties: { ...s }
             }));
             return { ...layer, geojson: { type: 'FeatureCollection', features } };
@@ -88,56 +98,81 @@ export default function MapScreen() {
     setLayers(prev => prev.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
   };
 
+  const getLayerStyle = (layer: any) => {
+    switch (layer.name_en) {
+      case 'district':
+        return { lineColor: '#f391d6', lineWidth: 8 };
+      case 'road':
+        return { lineColor: '#ffe53d', lineWidth: 3 };
+      case 'bike_way':
+        return { lineColor: '#ffa200', lineWidth: 5 };
+      default:
+        return { lineColor: 'blue', lineWidth: 1 };
+    }
+  };
+
+  const renderAir4ThaiMarkers = (layer: any) => {
+    if (!layer?.geojson?.features) return null;
+
+    return layer.geojson.features.map((f: any, index: number) => {
+      const coords = f.geometry.coordinates;
+      let AQILast: any;
+      try {
+        AQILast = typeof f.properties.AQILast === 'string' ? JSON.parse(f.properties.AQILast) : f.properties.AQILast;
+      } catch {
+        return null;
+      }
+
+      const pollutant = AQILast?.[selectedAQI];
+      if (!pollutant || pollutant.aqi === '-1' || pollutant.aqi === '-999') return null;
+
+      const color = colorMap[pollutant.color_id] || '#cccccc';
+      const valueText = selectedAQI === 'AQI' ? pollutant.aqi : pollutant.value;
+
+      return (
+        <MapboxGL.PointAnnotation
+          key={`air4thai-${index}`}
+          id={`air4thai-${index}`}
+          coordinate={coords}
+        >
+          <View style={{
+            width: 30,
+            height: 30,
+            backgroundColor: color,
+            borderRadius: 15,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 2,
+            borderColor: '#fff',
+          }}>
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>{valueText}</Text>
+          </View>
+        </MapboxGL.PointAnnotation>
+      );
+    });
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <MapboxGL.MapView style={{ flex: 1 }} styleURL={selectedStyle}>
-        <MapboxGL.Images images={{
-          school: { uri: 'https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/images/school.png' },
-          station: { uri: 'https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/images/station.png' },
-          cctv: { uri: 'https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/images/cctv.png' },
-          air: { uri: 'https://raw.githubusercontent.com/Pongpisud1998/bmamap/main/images/air.png' },
-        }} />
         <MapboxGL.Camera zoomLevel={10} centerCoordinate={[100.5, 13.75]} />
 
         {layers.map(layer => {
           if (!layer.visible || !layer.geojson) return null;
+          if (layer.name_en === 'air4thai') return renderAir4ThaiMarkers(layer);
+
           const iconId = layer.icon?.replace('.png', '');
-
-          if (layer.name_en === 'air4thai') {
-            const filtered = {
-              ...layer.geojson,
-              features: layer.geojson.features.filter((f: any) => f.properties[selectedAQI] !== undefined)
-            };
-            return (
-              <MapboxGL.ShapeSource key={layer.id} id={`source-${layer.id}`} shape={filtered}>
-                <MapboxGL.SymbolLayer
-                  id={`layer-${layer.id}`}
-                  style={{
-                    iconImage: iconId,
-                    iconSize: 0.5,
-                    textField: ['get', selectedAQI],
-                    textSize: 12,
-                    textOffset: [0, 1.2],
-                    textColor: '#000',
-                    textHaloColor: '#fff',
-                    textHaloWidth: 1
-                  }}
-                />
-              </MapboxGL.ShapeSource>
-            );
-          }
-
           return (
             <MapboxGL.ShapeSource key={`source-${layer.id}`} id={`source-${layer.id}`} shape={layer.geojson}>
               {iconId ? (
                 <MapboxGL.SymbolLayer
                   id={`layer-${layer.id}`}
-                  style={{ iconImage: iconId, iconSize: 0.5 }}
+                  style={{ iconImage: iconId, iconSize: 0.2 }}
                 />
               ) : (
                 <MapboxGL.LineLayer
                   id={`layer-${layer.id}`}
-                  style={{ lineColor: 'blue', lineWidth: 1 }}
+                  style={getLayerStyle(layer)}
                 />
               )}
             </MapboxGL.ShapeSource>
